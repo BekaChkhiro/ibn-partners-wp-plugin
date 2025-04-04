@@ -94,10 +94,14 @@ while (have_posts()) : the_post();
                 
                 if ($related_posts) : ?>
                     <div class="partner-section">
-                        <h2 class="section-title">პარტნიორის სიახლეები</h2>
+                        <h2 class="section-title">
+                            პარტნიორის სიახლეები
+                            <span class="news-count"><?php echo count($related_posts); ?> სიახლე</span>
+                        </h2>
                         <div class="partner-news-grid">
                             <?php foreach ($related_posts as $related_post) : 
                                 $thumbnail = get_the_post_thumbnail_url($related_post->ID, 'medium');
+                                $post_date = get_the_date('d M, Y', $related_post->ID);
                             ?>
                                 <div class="news-card">
                                     <?php if ($thumbnail) : ?>
@@ -122,6 +126,10 @@ while (have_posts()) : the_post();
                                                 echo wp_kses_post(wp_trim_words($related_post->post_content, 20));
                                             }
                                             ?>
+                                        </div>
+                                        <div class="news-date">
+                                            <i class="far fa-calendar-alt"></i>
+                                            <?php echo esc_html($post_date); ?>
                                         </div>
                                         <a href="<?php echo get_permalink($related_post->ID); ?>" class="read-more">
                                             სრულად ნახვა <i class="fas fa-arrow-right"></i>
