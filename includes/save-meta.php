@@ -1,81 +1,92 @@
 <?php
-/**
- * Save Meta Data for Partner Post Type
- */
-
-// Exit if accessed directly
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// 6. მეტა ველების შენახვა
 function save_partner_meta($post_id) {
-    // შევამოწმოთ nonce
-    if (!isset($_POST['partner_nonce']) || !wp_verify_nonce($_POST['partner_nonce'], basename(__FILE__))) {
-        return $post_id;
+    // თუ ეს ავტომატური შენახვაა, გამოვიდეთ
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
     }
 
-    // შევამოწმოთ ავტომატური შენახვა
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-        return $post_id;
+    // თუ არ არის პოსტი, გამოვიდეთ
+    if (!isset($_POST['post_type'])) {
+        return;
+    }
+
+    // თუ არ არის partner ტიპის პოსტი, გამოვიდეთ
+    if ('partner' !== $_POST['post_type']) {
+        return;
     }
 
     // შევამოწმოთ უფლებები
-    if ('partner' == $_POST['post_type'] && !current_user_can('edit_post', $post_id)) {
-        return $post_id;
+    if (!current_user_can('edit_post', $post_id)) {
+        return;
     }
 
-    // შევინახოთ მეტა ველები
+    // ძირითადი ველების შენახვა
     $fields = array(
-        'partner_website' => 'sanitize_url',
-        'partner_phone' => 'sanitize_text_field',
-        'partner_email' => 'sanitize_email',
-        'partner_address' => 'sanitize_text_field',
-        'partner_founding_year' => 'intval',
-        'partner_employees' => 'intval',
-        'partner_social_facebook' => 'sanitize_url',
-        'partner_social_linkedin' => 'sanitize_url',
-        'partner_social_twitter' => 'sanitize_url',
-        'partner_social_instagram' => 'sanitize_url'
+        'partner_website',
+        'partner_phone',
+        'partner_email',
+        'partner_address',
+        'partner_founding_year',
+        'partner_employees',
+        'partner_social_facebook',
+        'partner_social_linkedin',
+        'partner_social_twitter',
+        'partner_social_instagram',
+        'partner_logo_id',
+        'partner_cover_id'
     );
-    
-    foreach ($fields as $field => $sanitize_callback) {
+
+    foreach ($fields as $field) {
         if (isset($_POST[$field])) {
-            $value = call_user_func($sanitize_callback, $_POST[$field]);
+            $value = $_POST[$field];
+            
+            // სანიტიზაცია ველის ტიპის მიხედვით
+            if (strpos($field, 'website') !== false || strpos($field, 'social_') !== false) {
+                $value = esc_url_raw($value);
+            } elseif (strpos($field, 'email') !== false) {
+                $value = sanitize_email($value);
+            } elseif (strpos($field, '_id') !== false || 
+                      strpos($field, 'founding_year') !== false || 
+                      strpos($field, 'employees') !== false) {
+                $value = absint($value);
+            } else {
+                $value = sanitize_text_field($value);
+            }
+            
             update_post_meta($post_id, '_' . $field, $value);
         }
     }
-    
-    // სურათების შენახვა
-    if (isset($_POST['partner_images_nonce']) && wp_verify_nonce($_POST['partner_images_nonce'], basename(__FILE__))) {
-        // ლოგოს შენახვა
-        if (isset($_POST['partner_logo_id'])) {
-            update_post_meta($post_id, '_partner_logo_id', sanitize_text_field($_POST['partner_logo_id']));
-        }
-        
-        // ქავერის შენახვა
-        if (isset($_POST['partner_cover_id'])) {
-            update_post_meta($post_id, '_partner_cover_id', sanitize_text_field($_POST['partner_cover_id']));
-        }
-    }
-    
+
     // სამუშაო საათების შენახვა
-    if (isset($_POST['partner_hours_nonce']) && wp_verify_nonce($_POST['partner_hours_nonce'], basename(__FILE__))) {
-        $days = array('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday');
-        
-        foreach ($days as $day) {
-            if (isset($_POST['partner_' . $day . '_open'])) {
-                update_post_meta($post_id, '_partner_' . $day . '_open', sanitize_text_field($_POST['partner_' . $day . '_open']));
-            }
-            
-            if (isset($_POST['partner_' . $day . '_opening'])) {
-                update_post_meta($post_id, '_partner_' . $day . '_opening', sanitize_text_field($_POST['partner_' . $day . '_opening']));
-            }
-            
-            if (isset($_POST['partner_' . $day . '_closing'])) {
-                update_post_meta($post_id, '_partner_' . $day . '_closing', sanitize_text_field($_POST['partner_' . $day . '_closing']));
-            }
+    $days = array('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday');
+    
+    foreach ($days as $day) {
+        // სტატუსი (ღია/დაკეტილი)
+        $open_field = 'partner_' . $day . '_open';
+        if (isset($_POST[$open_field])) {
+            update_post_meta($post_id, '_' . $open_field, sanitize_text_field($_POST[$open_field]));
+        }
+
+        // გახსნის დრო
+        $opening_field = 'partner_' . $day . '_opening';
+        if (isset($_POST[$opening_field])) {
+            update_post_meta($post_id, '_' . $opening_field, sanitize_text_field($_POST[$opening_field]));
+        }
+
+        // დახურვის დრო
+        $closing_field = 'partner_' . $day . '_closing';
+        if (isset($_POST[$closing_field])) {
+            update_post_meta($post_id, '_' . $closing_field, sanitize_text_field($_POST[$closing_field]));
         }
     }
 }
-add_action('save_post', 'save_partner_meta');
+
+// ვაკეთებთ დერეგისტრაციას ძველი hook-ის
+remove_action('save_post', 'save_partner_meta');
+
+// ვარეგისტრირებთ ახალ, უფრო სპეციფიურ hook-ს
+add_action('save_post_partner', 'save_partner_meta', 10, 1);

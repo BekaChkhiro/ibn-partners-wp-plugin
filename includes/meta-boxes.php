@@ -43,8 +43,6 @@ add_action('add_meta_boxes', 'add_partner_meta_boxes');
 
 // 3. მეტა ველების შინაარსის გამოტანა
 function partner_details_callback($post) {
-    wp_nonce_field(basename(__FILE__), 'partner_nonce');
-    
     $website = get_post_meta($post->ID, '_partner_website', true);
     $phone = get_post_meta($post->ID, '_partner_phone', true);
     $email = get_post_meta($post->ID, '_partner_email', true);
@@ -180,8 +178,6 @@ function partner_details_callback($post) {
 
 // 4. ლოგოსა და ქავერის მეტა ბოქსის შინაარსი
 function partner_images_callback($post) {
-    wp_nonce_field(basename(__FILE__), 'partner_images_nonce');
-    
     $logo_id = get_post_meta($post->ID, '_partner_logo_id', true);
     $cover_id = get_post_meta($post->ID, '_partner_cover_id', true);
     
@@ -428,8 +424,6 @@ function partner_images_callback($post) {
 
 // 5. სამუშაო საათების მეტა ბოქსი
 function partner_hours_callback($post) {
-    wp_nonce_field(basename(__FILE__), 'partner_hours_nonce');
-    
     $days = array(
         'monday' => 'ორშაბათი',
         'tuesday' => 'სამშაბათი',
